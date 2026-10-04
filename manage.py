@@ -3,6 +3,7 @@
 import os
 import sys
 from pathlib import Path
+
 from decouple import Config, RepositoryEnv
 
 ENV_FILE = Path(__file__).resolve().parent / 'settings' / '.env'

@@ -1,12 +1,12 @@
-from django.db import models
-from typing import Any
-# Create your models here.
+from typing import Any, ClassVar
 
+# Create your models here.
 from django.contrib.auth.models import (
     AbstractBaseUser,
-    BaseUserManager,   
+    BaseUserManager,
     PermissionsMixin,
 )
+from django.db import models
 
 NAME_MAX_LENGTH = 50
 EMAIL_REQUIRED_MESSAGE = "NE MOZHET BIT PUSTIM"
@@ -35,7 +35,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name']
+    REQUIRED_FIELDS: ClassVar[list[str]] = ['first_name', 'last_name']
 
     def __str__(self) -> str:
         return self.email
