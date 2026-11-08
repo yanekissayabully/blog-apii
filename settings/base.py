@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 from datetime import timedelta
 
-from settings.conf import BASE_DIR
+from settings.conf import BASE_DIR, SECRET_KEY
 
 ACCESS_TOKEN_LIFETIME_MINUTES = 30
 REFRESH_TOKEN_LIFETIME_DAYS = 7
@@ -29,6 +29,9 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 # Application definition
 
 INSTALLED_APPS = [
+    'unfold',
+    'unfold.contrib.filters',
+    'unfold.contrib.forms',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
