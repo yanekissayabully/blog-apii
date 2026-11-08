@@ -61,7 +61,7 @@ ROOT_URLCONF = 'settings.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -167,6 +167,7 @@ UNFOLD = {
         {"icon": "menu_book", "title": "Unfold docs", "link": "https://unfoldadmin.com/docs/"},
     ],
     "COMMAND": {"search_models": True},
+    "DASHBOARD_CALLBACK": "apps.blog.callbacks.dashboard_callback",
     "SIDEBAR": {
         "show_search": True,
         "show_all_applications": False,

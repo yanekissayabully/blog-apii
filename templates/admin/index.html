@@ -1,0 +1,49 @@
+{% extends "admin/base.html" %}
+
+{% load i18n unfold %}
+
+{% block title %}{{ title }} | {{ site_title|default:_("Django site admin") }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+    <div class="flex flex-col gap-6">
+        {# 1. Cards #}
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+            {% for card in cards %}
+                {% component "unfold/components/card.html" with href=card.href icon=card.icon %}
+                    {% component "unfold/components/text.html" with class="text-subtle" %}
+                        {{ card.title }}
+                    {% endcomponent %}
+                    {% component "unfold/components/title.html" %}
+                        {{ card.value }}
+                    {% endcomponent %}
+                {% endcomponent %}
+            {% endfor %}
+        </div>
+
+        {# 2. Bar chart: posts per category #}
+        {% component "unfold/components/card.html" with title="Posts per category" %}
+            {% component "unfold/components/chart/bar.html" with data=chart_data height=300 %}{% endcomponent %}
+        {% endcomponent %}
+
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {# 3. Table: top 5 authors #}
+            <div class="lg:col-span-2">
+                {% component "unfold/components/card.html" with title="Top 5 authors" %}
+                    {% component "unfold/components/table.html" with table=authors_table card_included=1 striped=1 %}{% endcomponent %}
+                {% endcomponent %}
+            </div>
+
+            {# 4. Progress bars: published vs drafts #}
+            {% component "unfold/components/card.html" with title="Published vs drafts" %}
+                <div class="flex flex-col gap-6">
+                    {% component "unfold/components/progress.html" with title="Published" value=published_percent description=published_percent|add:"%" %}{% endcomponent %}
+                    {% component "unfold/components/progress.html" with title="Drafts" value=draft_percent description=draft_percent|add:"%" progress_class="bg-orange-500 dark:bg-orange-400" %}{% endcomponent %}
+                </div>
+            {% endcomponent %}
+        </div>
+    </div>
+{% endblock %}
