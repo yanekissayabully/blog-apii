@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 from datetime import timedelta
 
+from apps.blog.callbacks import posts_all_link, posts_published_link, posts_drafts_link, sidebar_navigation
 from settings.conf import BASE_DIR, SECRET_KEY
 
 ACCESS_TOKEN_LIFETIME_MINUTES = 30
@@ -139,3 +140,46 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=REFRESH_TOKEN_LIFETIME_DAYS),
 }
 
+# Unfold
+UNFOLD_PRIMARY_COLORS = {
+    "50": "oklch(97.9% 0.021 166.113)",
+    "100": "oklch(95% 0.052 163.051)",
+    "200": "oklch(90.5% 0.093 164.15)",
+    "300": "oklch(84.5% 0.143 164.978)",
+    "400": "oklch(76.5% 0.177 163.223)",
+    "500": "oklch(69.6% 0.17 162.48)",
+    "600": "oklch(59.6% 0.145 163.225)",
+    "700": "oklch(50.8% 0.118 165.612)",
+    "800": "oklch(43.2% 0.095 166.913)",
+    "900": "oklch(37.8% 0.077 168.94)",
+    "950": "oklch(26.2% 0.051 172.552)",
+}
+
+UNFOLD = {
+    "SITE_TITLE": "Blog Admin",
+    "SITE_HEADER": "Blog API",
+    "SITE_SUBHEADER": "Content management",
+    "SITE_SYMBOL": "article",
+    "COLORS": {"primary": UNFOLD_PRIMARY_COLORS},
+    "ENVIRONMENT": "apps.blog.callbacks.environment_callback",
+    "SITE_DROPDOWN": [
+        {"icon": "code", "title": "GitHub repository", "link": "https://github.com/yanekissayabully/blog-apii"},
+        {"icon": "menu_book", "title": "Unfold docs", "link": "https://unfoldadmin.com/docs/"},
+    ],
+    "COMMAND": {"search_models": True},
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": False,
+        "navigation": "apps.blog.callbacks.sidebar_navigation",
+    },
+    "TABS": [
+        {
+            "models": ["blog.post"],
+            "items": [
+                {"title": "All", "link": posts_all_link, "active": "apps.blog.callbacks.posts_all_active"},
+                {"title": "Published", "link": posts_published_link},
+                {"title": "Drafts", "link": posts_drafts_link},
+            ],
+        },
+    ],
+}
