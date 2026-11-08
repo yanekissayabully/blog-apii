@@ -79,16 +79,16 @@ Features:
 
 Dashboard:
 
-![Dashboard](docs/screenshots/dashboard.png)
+![Dashboard](docs/screenshots/dashboard.jpg)
 
 Post list with filters:
 
-![Post list](docs/screenshots/post-list.png)
+![Post list](docs/screenshots/post-list.jpg)
 
 Post edit page:
 
-![Post edit](docs/screenshots/post-edit.png)
+![Post edit](docs/screenshots/post-edit.jpg)
 
 User list:
 
-![User list](docs/screenshots/user-list.png)
+![User list](docs/screenshots/user-list.jpg)
