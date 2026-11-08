@@ -9,6 +9,10 @@ from unfold.sections import TableSection
 
 from apps.blog.models import Category, Comment, Post, Tag
 
+from unfold.contrib.filters.admin import AutocompleteSelectFilter, RangeDateTimeFilter
+from unfold.decorators import display
+
+COMMENT_BODY_PREVIEW_LENGTH = 60
 
 class CategoryPostsSection(TableSection):
     """Table with the posts of a category, shown when a row of the list is expanded."""
@@ -53,8 +57,32 @@ class TagAdmin(PostsCountMixin, ModelAdmin):
 @admin.register(Post)
 class PostAdmin(ModelAdmin):
     list_filter: ClassVar[list[str]] = ["status"]
+    search_fields: ClassVar[list[str]] = ["title"]
 
 
 @admin.register(Comment)
 class CommentAdmin(ModelAdmin):
-    pass
+    list_display: ClassVar[list[str]] = ["post_title", "author_email", "body_preview", "created_at"]
+    list_select_related: ClassVar[list[str]] = ["post", "author"]  # one JOIN instead of a query per row
+    list_filter: ClassVar[list[tuple]] = [
+        ("post", AutocompleteSelectFilter),
+        ("author", AutocompleteSelectFilter),
+        ("created_at", RangeDateTimeFilter),
+    ]
+    list_filter_submit = True
+    search_fields: ClassVar[list[str]] = ["body", "author__email", "post__title"]
+    autocomplete_fields: ClassVar[list[str]] = ["post", "author"]
+
+    @display(description="Post", ordering="post__title")
+    def post_title(self, obj: Comment) -> str:
+        return obj.post.title
+
+    @display(description="Author", ordering="author__email")
+    def author_email(self, obj: Comment) -> str:
+        return obj.author.email
+
+    @display(description="Comment")
+    def body_preview(self, obj: Comment) -> str:
+        if len(obj.body) <= COMMENT_BODY_PREVIEW_LENGTH:
+            return obj.body
+        return obj.body[:COMMENT_BODY_PREVIEW_LENGTH].rstrip() + "..."
