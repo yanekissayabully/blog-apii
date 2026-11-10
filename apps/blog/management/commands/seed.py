@@ -2,12 +2,14 @@
 
 import random
 import time
+from datetime import datetime, timedelta
 from typing import Any
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import transaction
+from django.utils import timezone
 from django.utils.text import slugify
 from faker import Faker
 
@@ -34,6 +36,12 @@ TITLE_WORDS = 6
 MIN_PARAGRAPHS = 3
 MAX_PARAGRAPHS = 6
 SLUG_MAX_LENGTH = 50
+
+#--- Dates ---
+POST_MAX_AGE_DAYS = 365
+EDITED_POST_CHANCE = 0.30
+MIN_EDIT_DELAY_DAYS = 1
+MAX_EDIT_DELAY_DAYS = 30
 
 # --- Comments ---
 MIN_COMMENT_SENTENCES = 1
@@ -113,11 +121,11 @@ class Command(BaseCommand):
 
             posts_created = self._create_posts(fake, posts_count, user_ids)
 
-            published_ids = list(Post.objects.filter(status=Post.Status.PUBLISHED).values_list("pk", flat=True))
-            if comments_count and not published_ids:
+            published = list(Post.objects.filter(status=Post.Status.PUBLISHED).values_list("pk", "created_at"))
+            if comments_count and not published:
                 raise CommandError("There are no published posts to comment on. Use --posts or publish a post first.")
 
-            comments_created = self._create_comments(fake, comments_count, user_ids, published_ids)
+            comments_created = self._create_comments(fake, comments_count, user_ids, published)
 
         elapsed = time.perf_counter() - started_at
         self._print_summary(
@@ -219,6 +227,7 @@ class Command(BaseCommand):
                 )
             )
         created_posts = Post.objects.bulk_create(posts)
+        self._set_post_dates(created_posts)
 
         for post in created_posts:
             tags_number = random.randint(0, min(MAX_TAGS_PER_POST, len(tag_ids)))
@@ -226,17 +235,39 @@ class Command(BaseCommand):
         return len(created_posts)
 
     @staticmethod
-    def _create_comments(fake: Faker, count: int, user_ids: list[int], published_ids: list[int]) -> int:
-        comments = [
-            Comment(
-                post_id=random.choice(published_ids),
-                author_id=random.choice(user_ids),
-                body=" ".join(fake.sentences(nb=random.randint(MIN_COMMENT_SENTENCES, MAX_COMMENT_SENTENCES))),
+    def _random_moment(start: datetime, end: datetime) -> datetime:
+        return start + (end - start) * random.random()
+
+    def _set_post_dates(self, posts: list[Post]) -> None:
+        now = timezone.now()
+        oldest = now - timedelta(days=POST_MAX_AGE_DAYS)
+        for post in posts:
+            post.created_at = self._random_moment(oldest, now)
+            post.updated_at = post.created_at
+            if random.random() < EDITED_POST_CHANCE:
+                delay = timedelta(days=random.randint(MIN_EDIT_DELAY_DAYS, MAX_EDIT_DELAY_DAYS))
+                post.updated_at = min(post.created_at + delay, now)
+        Post.objects.bulk_update(posts, ["created_at", "updated_at"])
+
+    def _create_comments(self, fake: Faker, count: int, user_ids: list[int], published: list[tuple[int, datetime]]) -> int:
+        now = timezone.now()
+        comments: list[Comment] = []
+        dates: list[datetime] = []
+        for _ in range(count):
+            post_id, post_created_at = random.choice(published)
+            dates.append(self._random_moment(post_created_at, now))
+            comments.append(
+                Comment(
+                    post_id=post_id,
+                    author_id=random.choice(user_ids),
+                    body=" ".join(fake.sentences(nb=random.randint(MIN_COMMENT_SENTENCES, MAX_COMMENT_SENTENCES))),
+                )
             )
-            for _ in range(count)
-        ]
-        Comment.objects.bulk_create(comments)
-        return len(comments)
+        created = Comment.objects.bulk_create(comments)
+        for comment, created_at in zip(created, dates):
+            comment.created_at = created_at
+        Comment.objects.bulk_update(created, ["created_at"])
+        return len(created)
 
     def _print_summary(self, rows: list[tuple[str, int]], elapsed: float) -> None:
         for label, count in rows:
