@@ -1,7 +1,8 @@
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Avg, Count, F, Max, Min, Q, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.blog.models import Category, Post, Comment
@@ -10,6 +11,9 @@ User = get_user_model()
 
 NEWEST_POSTS_LIMIT = 5
 PAGE_SIZE = 10
+EDITED_AFTER = timedelta(hours=1)
+UNCATEGORIZED = "Uncategorized"
+AVERAGE_DIGITS = 2
 
 def categories_by_name() -> QuerySet[Category]:
     return Category.objects.order_by("name")
@@ -75,6 +79,47 @@ def users_without_comments() -> QuerySet:
 def posts_with_both_tags(first_slug: str, second_slug: str) -> QuerySet[Post]:
     return Post.objects.filter(tags__slug=first_slug).filter(tags__slug=second_slug)
 
+def search_posts(text: str) -> QuerySet[Post]:
+    return Post.objects.filter(Q(title__incontains=text) | Q(body__incontains=text))
+
+def published_posts_missing_info() -> QuerySet[Post]:
+    return published_posts().filter(Q(category__isnull=True) | Q(tags__isnull=True)).distinct()
+
+def edited_posts() -> QuerySet[Post]:
+    return Post.objects.filter(updated_at__gt=F("created_at") + EDITED_AFTER)
+
+def comments_by_post_author() -> QuerySet[Comment]:
+    return Comment.objects.filter(author=F("post__author"))
+
+def comments_before_post() -> QuerySet[Comment]:
+    return Comment.objects.filter(created_at__lt=F("post__created_at"))
+
+def published_authors_emails() -> list[str]:
+    emails = published_posts().values_list("author__email", flat=True).distinct().order_by("author__email")
+    return list(emails)
+
+def published_posts_overview() -> list[dict]:
+    posts = (
+        published_posts()
+        .annotate(author_email=F("author__email"), category_name=Coalesce("category__name", Value(UNCATEGORIZED)))
+        .order_by("-created_at")
+        .values("title", "author_email", "category_name")
+    )
+    return list(posts)
+
+def posts_stats() -> dict:
+    return Post.objects.aggregate(
+        total=Count("id"),
+        published=Count("id", filter=Q(status=Post.Status.PUBLISHED)),
+        drafts=Count("id", filter=Q(status=Post.Status.DRAFT)),
+        first_post_at=Min("created_at"),
+        last_post_at=Max("created_at"),
+    )
+
+def average_comments_per_post() -> float:
+    average = published_posts().annotate(comments_number=Count("comments")).aggregate(average=Avg("comments_number"))
+    return round(average["average"] or 0.0, AVERAGE_DIGITS)
+
 QUERIES = {
     1: categories_by_name,
     2: published_posts,
@@ -97,4 +142,13 @@ QUERIES = {
     19: posts_without_tags,
     20: users_without_comments,
     21: posts_with_both_tags,
+    22: search_posts,
+    23: published_posts_missing_info,
+    24: edited_posts,
+    25: comments_by_post_author,
+    26: comments_before_post,
+    27: published_authors_emails,
+    28: published_posts_overview,
+    29: posts_stats,
+    30: average_comments_per_post,
 }

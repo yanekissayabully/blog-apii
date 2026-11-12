@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.blog.management.commands.seed import CATEGORY_NAMES, EMAIL_DOMAIN, TAG_NAMES
-from apps.blog.models import Post
+from apps.blog.models import Comment, Post
 from apps.blog.queries import QUERIES
 
 User = get_user_model()
@@ -21,6 +21,7 @@ User = get_user_model()
 # Queries 40-44 change data, so a plain `queries` run skips them.
 MODIFYING_QUERIES = range(40, 45)
 ROWS_TO_SHOW = 5
+COMMENT_PREVIEW = 50
 
 # --- Sample values for the arguments ---
 LAST_DAYS = 180
@@ -105,7 +106,7 @@ class Command(BaseCommand):
         elif isinstance(result, list):
             self._print_rows(rows, [])
         elif isinstance(result, dict):
-            self._print_rows([f"{key}: {value}" for key, value in result.items()], [])
+            self._print_rows([f"{key}: {value}" for key, value in result.items()], [], noun="items")
         elif isinstance(result, Model):
             self.stdout.write(f"    {result}")
         else:
@@ -116,14 +117,17 @@ class Command(BaseCommand):
                 self.stdout.write(f"    SQL: {captured['sql']}")
         self.stdout.write("")
 
-    def _print_rows(self, rows: list[Any], annotations: list[str]) -> None:
+    def _print_rows(self, rows: list[Any], annotations: list[str], noun: str = "rows") -> None:
         for row in rows[:ROWS_TO_SHOW]:
             self.stdout.write(f"    {self._describe(row, annotations)}")
-        self.stdout.write(f"    ({len(rows)} rows)")
+        self.stdout.write(f"    ({len(rows)} {noun})")
 
     @staticmethod
     def _describe(row: Any, annotations: list[str]) -> str:
         """Text for one row. For model objects, annotated values are added in brackets."""
+        if isinstance(row, Comment):
+            # str(comment) would load the author and the post: extra queries just for printing.
+            return f"Comment #{row.pk}: {row.body[:COMMENT_PREVIEW]}"
         if isinstance(row, Model):
             extras = ", ".join(f"{name}={getattr(row, name)}" for name in annotations if hasattr(row, name))
             return f"{row} [{extras}]" if extras else str(row)
