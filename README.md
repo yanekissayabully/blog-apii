@@ -54,6 +54,44 @@ Notes:
 - Running the command twice does not fail: existing categories and tags are skipped, emails and slugs stay unique.
 - Show all options: `python manage.py seed --help`.
 
+## Queries
+
+The `queries` command runs the 50 ORM queries from `apps/blog/queries.py` and shows how many SQL queries each one made.
+Run `python manage.py seed --clear` first so the database has data for every query.
+
+```bash
+python manage.py queries
+python manage.py queries --number 31
+python manage.py queries --number 31 --sql
+```
+
+| Argument      | Description                                                                          |
+|---------------|--------------------------------------------------------------------------------------|
+| (none)        | Run all queries except 40-44 (they change data)                                      |
+| `--number N`  | Run only query number `N` (also works for 40-44)                                     |
+| `--sql`       | Also print the SQL of each query                                                     |
+
+Notes:
+
+- For every query the command prints its number, name, the number of SQL queries, the first 5 rows and the total row count.
+- For annotated results the annotated values are shown in brackets, for example `post_count=32`.
+- Arguments for queries (slugs, email, dates) are chosen automatically so that the results are not empty.
+- An unknown number gives an error: `There is no query number 99.`
+- Queries 40-44 modify the database: run `python manage.py seed --clear` to get fresh data again.
+
+Example:
+
+```
+$ python manage.py queries --number 31
+#31 categories_with_post_count — 1 SQL query
+    Frontend [post_count=26]
+    Databases [post_count=25]
+    Security [post_count=25]
+    Testing [post_count=22]
+    Django [post_count=21]
+    (8 rows)
+```
+
 ## Admin
 
 Open `http://127.0.0.1:8000/admin/` after creating a superuser.
