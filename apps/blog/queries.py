@@ -1,11 +1,11 @@
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
-from django.db.models import QuerySet, Avg, Count, F, Max, Min, Q, Value
-from django.db.models.functions import Coalesce
+from django.db.models import QuerySet, Avg, Count, F, Max, Min, Q, Value, Case, When
+from django.db.models.functions import Coalesce, Concat, TruncMonth
 from django.utils import timezone
 
-from apps.blog.models import Category, Post, Comment
+from apps.blog.models import Category, Post, Comment, Tag
 
 User = get_user_model()
 
@@ -14,6 +14,9 @@ PAGE_SIZE = 10
 EDITED_AFTER = timedelta(hours=1)
 UNCATEGORIZED = "Uncategorized"
 AVERAGE_DIGITS = 2
+TOP_AUTHORS_LIMIT = 5
+HOT_COMMENTS = 10
+NORMAL_COMMENTS = 3
 
 def categories_by_name() -> QuerySet[Category]:
     return Category.objects.order_by("name")
@@ -80,7 +83,7 @@ def posts_with_both_tags(first_slug: str, second_slug: str) -> QuerySet[Post]:
     return Post.objects.filter(tags__slug=first_slug).filter(tags__slug=second_slug)
 
 def search_posts(text: str) -> QuerySet[Post]:
-    return Post.objects.filter(Q(title__incontains=text) | Q(body__incontains=text))
+    return Post.objects.filter(Q(title__icontains=text) | Q(body__icontains=text))
 
 def published_posts_missing_info() -> QuerySet[Post]:
     return published_posts().filter(Q(category__isnull=True) | Q(tags__isnull=True)).distinct()
@@ -120,6 +123,54 @@ def average_comments_per_post() -> float:
     average = published_posts().annotate(comments_number=Count("comments")).aggregate(average=Avg("comments_number"))
     return round(average["average"] or 0.0, AVERAGE_DIGITS)
 
+def categories_with_post_count() -> QuerySet[Category]:
+    return Category.objects.annotate(post_count=Count("posts")).order_by("-post_count", "name")
+
+def categories_with_published_count() -> QuerySet[Category]:
+    published = Count("posts", filter=Q(posts__status=Post.Status.PUBLISHED))
+    return Category.objects.annotate(published_count=published).order_by("-published_count", "name")
+
+def top_authors() -> QuerySet:
+    published = Count("posts", filter=Q(posts__status=Post.Status.PUBLISHED))
+    return User.objects.annotate(published_count=published).order_by("-published_count", "email")[:TOP_AUTHORS_LIMIT]
+
+def popular_tags(min_posts: int) -> QuerySet[Tag]:
+    return (
+        Tag.objects.annotate(post_count=Count("posts"))
+        .filter(post_count__gte=min_posts)
+        .order_by("-post_count", "name")
+    )
+
+def  posts_per_status() -> list[dict]:
+    return list(Post.objects.values("status").annotate(count=Count("id")).order_by("status"))
+
+def users_activity() -> QuerySet:
+    return User.objects.annotate(
+        post_count=Count("posts", distinct=True),
+        comment_count=Count("comments", distinct=True),
+    ).order_by("email")
+
+def search_users_by_full_name(text: str) -> QuerySet:
+    return User.objects.annotate(full_name=Concat("first_name", Value(" "), "last_name")).filter(
+        full_name__icontains=text
+    )
+
+def published_posts_per_month() -> list[dict]:
+    months = published_posts().annotate(month=TruncMonth("created_at")).values("month")
+    return list(months.annotate(count=Count("id")).order_by("month"))
+
+def posts_with_popularity() -> QuerySet[Post]:
+    popularity = Case(
+        When(comment_count__gte=HOT_COMMENTS, then=Value("hot")),
+        When(comment_count__gte=NORMAL_COMMENTS, then=Value("normal")),
+        default=Value("quiet"),
+    )
+    return (
+        Post.objects.annotate(comment_count=Count("comments"))
+        .annotate(popularity=popularity)
+        .order_by("-comment_count", "-created_at")
+    )
+
 QUERIES = {
     1: categories_by_name,
     2: published_posts,
@@ -151,4 +202,13 @@ QUERIES = {
     28: published_posts_overview,
     29: posts_stats,
     30: average_comments_per_post,
+    31: categories_with_post_count,
+    32: categories_with_published_count,
+    33: top_authors,
+    34: popular_tags,
+    35: posts_per_status,
+    36: users_activity,
+    37: search_users_by_full_name,
+    38: published_posts_per_month,
+    39: posts_with_popularity,
 }
