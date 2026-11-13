@@ -11,8 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 from datetime import timedelta
 
-from apps.blog.callbacks import posts_all_link, posts_published_link, posts_drafts_link, sidebar_navigation
-from settings.conf import BASE_DIR, SECRET_KEY
+from apps.blog.callbacks import posts_all_link, posts_drafts_link, posts_published_link
+from settings.conf import BASE_DIR, SECRET_KEY  # noqa: F401
 
 ACCESS_TOKEN_LIFETIME_MINUTES = 30
 REFRESH_TOKEN_LIFETIME_DAYS = 7

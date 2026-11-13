@@ -2,12 +2,27 @@ from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import QuerySet, Avg, Count, F, Max, Min, Q, Value, Case, When, Exists, OuterRef, Prefetch, Subquery
+from django.db.models import (
+    Avg,
+    Case,
+    Count,
+    Exists,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Q,
+    QuerySet,
+    Subquery,
+    Value,
+    When,
+)
 from django.db.models.functions import Coalesce, Concat, TruncMonth
 from django.utils import timezone
 from django.utils.text import slugify
 
-from apps.blog.models import Category, Post, Comment, Tag
+from apps.blog.models import Category, Comment, Post, Tag
 
 User = get_user_model()
 
